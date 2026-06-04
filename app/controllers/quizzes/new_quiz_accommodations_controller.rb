@@ -93,7 +93,9 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       return
     end
 
-    body = JSON.parse(response.body)
+    body = parse_response_body(response)
+    return render_service_error if body.nil?
+
     participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
     accommodations = extract_accommodations(participants)
     if params[:user_id].present?
@@ -132,7 +134,9 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       return
     end
 
-    body = JSON.parse(response.body)
+    body = parse_response_body(response)
+    return render_service_error if body.nil?
+
     participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
     accommodations = extract_accommodations(participants)
     accommodation = accommodations.find { |a| a[:user_id].to_s == params[:user_id].to_s }
@@ -158,6 +162,17 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       render json: { errors: [{ message: "New Quizzes service is not configured" }] },
              status: :service_unavailable
     end
+  end
+
+  def parse_response_body(response)
+    JSON.parse(response.body)
+  rescue JSON::ParserError => e
+    Canvas::Errors.capture_exception(:new_quiz_accommodations, e, :warn)
+    nil
+  end
+
+  def render_service_error
+    render json: { errors: [{ message: "New Quizzes service error" }] }, status: :bad_gateway
   end
 
   def authorized_to_read?
