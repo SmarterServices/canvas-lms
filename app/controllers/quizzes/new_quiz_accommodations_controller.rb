@@ -166,7 +166,7 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
 
   def parse_response_body(response)
     JSON.parse(response.body)
-  rescue JSON::ParserError => e
+  rescue JSON::ParserError, TypeError => e
     Canvas::Errors.capture_exception(:new_quiz_accommodations, e, :warn)
     nil
   end
@@ -181,6 +181,8 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
 
   def extract_accommodations(participants)
     Array(participants).filter_map do |participant|
+      next unless participant.is_a?(Hash)
+
       user_id = participant["user_id"] || participant["canvas_user_id"]
       extra_time = participant["extra_time"] || participant["time_extension"]
       extra_attempts = participant["extra_attempts"]
