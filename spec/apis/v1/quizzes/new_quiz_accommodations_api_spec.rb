@@ -41,7 +41,7 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
   end
 
   describe "GET /api/v1/courses/:course_id/new_quizzes/:assignment_id/accommodations (index)" do
-    let_once(:nq_api_host) { "https://quiz-lti.example.com" }
+    let(:nq_api_host) { "https://quiz-lti.example.com" }
 
     before do
       allow(Services::NewQuizzes).to receive(:api_gateway_host).and_return(nq_api_host)
@@ -157,7 +157,7 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
   end
 
   describe "GET /api/v1/courses/:course_id/new_quizzes/:assignment_id/accommodations/:user_id (show)" do
-    let_once(:nq_api_host) { "https://quiz-lti.example.com" }
+    let(:nq_api_host) { "https://quiz-lti.example.com" }
 
     before do
       allow(Services::NewQuizzes).to receive(:api_gateway_host).and_return(nq_api_host)

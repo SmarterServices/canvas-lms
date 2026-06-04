@@ -42,13 +42,13 @@
 #           "format": "int64"
 #         },
 #         "extra_attempts": {
-#           "description": "Number of times the student is allowed to re-take the quiz over the multiple-attempt limit.",
+#           "description": "Number of extra re-takes allowed over the multiple-attempt limit.",
 #           "example": 2,
 #           "type": "integer",
 #           "format": "int64"
 #         },
 #         "reduce_choices_enabled": {
-#           "description": "If true, removes one incorrect answer from multiple-choice questions with 4 or more options.",
+#           "description": "If true, removes one incorrect answer from multiple-choice questions.",
 #           "example": true,
 #           "type": "boolean"
 #         }
@@ -84,19 +84,22 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
 
     response = fetch_accommodations_from_service
     if response.nil?
-      render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] }, status: :bad_gateway
-    elsif response.code == 200
-      body = JSON.parse(response.body)
-      participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
-      accommodations = extract_accommodations(participants)
-      if params[:user_id].present?
-        accommodations = accommodations.select { |a| a[:user_id].to_s == params[:user_id].to_s }
-      end
-      render json: { accommodations: }
-    else
-      render json: { errors: [{ message: "New Quizzes service returned #{response.code}" }] },
-             status: response.code
+      render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] },
+             status: :bad_gateway
+      return
     end
+    unless response.code == 200
+      render json: { errors: [{ message: "New Quizzes service error" }] }, status: :bad_gateway
+      return
+    end
+
+    body = JSON.parse(response.body)
+    participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
+    accommodations = extract_accommodations(participants)
+    if params[:user_id].present?
+      accommodations = accommodations.select { |a| a[:user_id].to_s == params[:user_id].to_s }
+    end
+    render json: { accommodations: }
   end
 
   # @API Get accommodation for a specific user on a New Quizzes assignment
@@ -120,20 +123,23 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
 
     response = fetch_accommodations_from_service
     if response.nil?
-      render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] }, status: :bad_gateway
-    elsif response.code == 200
-      body = JSON.parse(response.body)
-      participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
-      accommodations = extract_accommodations(participants)
-      accommodation = accommodations.find { |a| a[:user_id].to_s == params[:user_id].to_s }
-      if accommodation
-        render json: { accommodation: }
-      else
-        render json: { errors: [{ message: "No accommodation found for user" }] }, status: :not_found
-      end
+      render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] },
+             status: :bad_gateway
+      return
+    end
+    unless response.code == 200
+      render json: { errors: [{ message: "New Quizzes service error" }] }, status: :bad_gateway
+      return
+    end
+
+    body = JSON.parse(response.body)
+    participants = body.is_a?(Array) ? body : (body["participants"] || body["accommodations"] || [])
+    accommodations = extract_accommodations(participants)
+    accommodation = accommodations.find { |a| a[:user_id].to_s == params[:user_id].to_s }
+    if accommodation
+      render json: { accommodation: }
     else
-      render json: { errors: [{ message: "New Quizzes service returned #{response.code}" }] },
-             status: response.code
+      render json: { errors: [{ message: "No accommodation found for user" }] }, status: :not_found
     end
   end
 

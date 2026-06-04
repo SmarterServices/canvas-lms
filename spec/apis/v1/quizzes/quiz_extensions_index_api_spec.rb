@@ -47,6 +47,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
 
     context "as a student" do
       it "is unauthorized" do
+        @user = @student1
         raw_api_call(:get,
                      "/api/v1/courses/#{@course.id}/quizzes/#{@quiz.id}/extensions",
                      { controller: "quizzes/quiz_extensions",

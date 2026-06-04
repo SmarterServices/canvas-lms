@@ -73,16 +73,15 @@ describe Canvas::LiveEvents do
       expect_event("quiz_extension_created", {
                      quiz_id: @quiz.id.to_s,
                      user_id: @student.id.to_s,
-                     extra_attempts: "3",
-                     extra_time: "30",
-                     manually_unlocked: "true",
-                     end_at: nil
+                     extra_attempts: 3,
+                     extra_time: 30,
+                     manually_unlocked: true
                    })
 
       Canvas::LiveEvents.quiz_extension_created(extension)
     end
 
-    it "emits event with nil fields when not set" do
+    it "emits event omitting nil fields via compact" do
       quiz_submission = @quiz.generate_submission(@student)
       quiz_submission.extra_attempts = 2
       quiz_submission.save!
@@ -92,10 +91,7 @@ describe Canvas::LiveEvents do
       expect_event("quiz_extension_created", {
                      quiz_id: @quiz.id.to_s,
                      user_id: @student.id.to_s,
-                     extra_attempts: "2",
-                     extra_time: nil,
-                     manually_unlocked: nil,
-                     end_at: nil
+                     extra_attempts: 2
                    })
 
       Canvas::LiveEvents.quiz_extension_created(extension)
@@ -118,9 +114,9 @@ describe Canvas::LiveEvents do
                      course_id: @course.global_id.to_s,
                      assignment_id: @assignment.global_id.to_s,
                      user_id: @student.id.to_s,
-                     extra_time: "30",
-                     extra_attempts: "2",
-                     reduce_choices_enabled: "true"
+                     extra_time: 30,
+                     extra_attempts: 2,
+                     reduce_choices_enabled: true
                    })
 
       Canvas::LiveEvents.new_quiz_accommodation_created(@course, @assignment, accommodations)
