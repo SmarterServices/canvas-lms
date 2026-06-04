@@ -188,7 +188,7 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       extra_attempts = participant["extra_attempts"]
       reduce_choices_enabled = participant["reduce_choices_enabled"]
 
-      next if extra_time.blank? && extra_attempts.blank? && reduce_choices_enabled.blank?
+      next unless extra_time.to_i > 0 || extra_attempts.to_i > 0 || reduce_choices_enabled == true
 
       {
         user_id:,

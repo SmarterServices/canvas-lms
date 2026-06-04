@@ -111,8 +111,8 @@ class AssignmentExtensionsController < ApplicationController
       end
 
       if @assignment.quiz_lti?
-        accommodations = assignment_extensions.map do |ext|
-          { user_id: ext[:user_id], extra_attempts: ext[:extra_attempts], extra_time: nil, reduce_choices_enabled: nil }
+        accommodations = submissions.map do |sub|
+          { user_id: sub.user.global_id, extra_attempts: sub.extra_attempts }
         end
         Canvas::LiveEvents.new_quiz_accommodation_created(@context, @assignment, accommodations)
       end

@@ -153,6 +153,42 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
 
         expect(res["errors"][0]["message"]).to eql("Unable to communicate with New Quizzes service")
       end
+
+      it "returns 502 when service returns non-200 status" do
+        stub_request(:get, "#{nq_api_host}/api/assignments/#{@assignment.id}/participants")
+          .to_return(status: 500, body: "Internal Server Error")
+
+        res = api_call(:get,
+                       "/api/v1/courses/#{@course.id}/new_quizzes/#{@assignment.id}/accommodations",
+                       { controller: "quizzes/new_quiz_accommodations",
+                         action: "index",
+                         format: "json",
+                         course_id: @course.id.to_s,
+                         assignment_id: @assignment.id.to_s },
+                       {},
+                       {},
+                       { expected_status: 502 })
+
+        expect(res["errors"][0]["message"]).to eql("New Quizzes service error")
+      end
+
+      it "returns 502 when service returns invalid JSON" do
+        stub_request(:get, "#{nq_api_host}/api/assignments/#{@assignment.id}/participants")
+          .to_return(status: 200, body: "<html>Error</html>")
+
+        res = api_call(:get,
+                       "/api/v1/courses/#{@course.id}/new_quizzes/#{@assignment.id}/accommodations",
+                       { controller: "quizzes/new_quiz_accommodations",
+                         action: "index",
+                         format: "json",
+                         course_id: @course.id.to_s,
+                         assignment_id: @assignment.id.to_s },
+                       {},
+                       {},
+                       { expected_status: 502 })
+
+        expect(res["errors"][0]["message"]).to eql("New Quizzes service error")
+      end
     end
   end
 
