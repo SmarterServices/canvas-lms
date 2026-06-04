@@ -55,7 +55,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
                        format: "json",
                        course_id: @course.id.to_s,
                        quiz_id: @quiz.id.to_s })
-        assert_status(401)
+        assert_status(403)
       end
     end
 

@@ -184,6 +184,8 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       next unless participant.is_a?(Hash)
 
       user_id = participant["user_id"] || participant["canvas_user_id"]
+      next if user_id.nil?
+
       extra_time = participant["extra_time"] || participant["time_extension"]
       extra_attempts = participant["extra_attempts"]
       reduce_choices_enabled = participant["reduce_choices_enabled"]

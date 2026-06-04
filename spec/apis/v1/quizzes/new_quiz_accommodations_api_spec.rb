@@ -57,7 +57,7 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
                        format: "json",
                        course_id: @course.id.to_s,
                        assignment_id: @assignment.id.to_s })
-        assert_status(401)
+        assert_status(403)
       end
     end
 
