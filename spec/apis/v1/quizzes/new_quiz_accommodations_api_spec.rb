@@ -227,13 +227,14 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
     end
 
     it "returns 404 when no accommodation exists for user" do
+      original_student = @student
       other_student = student_in_course(course: @course, active_all: true).user
       @user = @teacher
       stub_request(:get, "#{nq_api_host}/api/assignments/#{@assignment.id}/participants")
         .to_return(
           status: 200,
           body: [
-            { "user_id" => @student.id, "extra_time" => 45 }
+            { "user_id" => original_student.id, "extra_time" => 45 }
           ].to_json,
           headers: { "Content-Type" => "application/json" }
         )
