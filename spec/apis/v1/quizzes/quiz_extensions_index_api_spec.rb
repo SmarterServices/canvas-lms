@@ -76,7 +76,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
 
         res = api_list_quiz_extensions
         expect(res["quiz_extensions"].length).to be 1
-        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id)
+        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id.to_s)
         expect(res["quiz_extensions"][0]["extra_attempts"]).to be 3
       end
 
@@ -87,7 +87,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
 
         res = api_list_quiz_extensions
         expect(res["quiz_extensions"].length).to be 1
-        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id)
+        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id.to_s)
         expect(res["quiz_extensions"][0]["extra_time"]).to be 30
       end
 
@@ -98,7 +98,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
 
         res = api_list_quiz_extensions
         expect(res["quiz_extensions"].length).to be 1
-        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id)
+        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id.to_s)
         expect(res["quiz_extensions"][0]["manually_unlocked"]).to be true
       end
 
@@ -124,7 +124,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
 
         res = api_list_quiz_extensions
         expect(res["quiz_extensions"].length).to be 1
-        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student2.id)
+        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student2.id.to_s)
       end
 
       it "filters by user_id when provided" do
@@ -145,7 +145,7 @@ describe Quizzes::QuizExtensionsController, type: :request do
                          quiz_id: @quiz.id.to_s },
                        { user_id: @student1.id })
         expect(res["quiz_extensions"].length).to be 1
-        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id)
+        expect(res["quiz_extensions"][0]["user_id"]).to eql(@student1.id.to_s)
       end
     end
   end

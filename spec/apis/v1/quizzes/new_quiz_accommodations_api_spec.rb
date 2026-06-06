@@ -20,6 +20,8 @@
 require_relative "../../api_spec_helper"
 
 describe Quizzes::NewQuizAccommodationsController, type: :request do
+  include WebMock::API
+
   before :once do
     course_factory
     @teacher = teacher_in_course(course: @course, active_all: true).user

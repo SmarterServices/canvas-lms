@@ -71,8 +71,8 @@ describe Canvas::LiveEvents do
       extension = Quizzes::QuizExtension.new(quiz_submission, {})
 
       expect_event("quiz_extension_created", {
-                     quiz_id: @quiz.id.to_s,
-                     user_id: @student.id.to_s,
+                     quiz_id: quiz_submission.global_quiz_id.to_s,
+                     user_id: quiz_submission.global_user_id.to_s,
                      extra_attempts: 3,
                      extra_time: 30,
                      manually_unlocked: true
@@ -89,8 +89,8 @@ describe Canvas::LiveEvents do
       extension = Quizzes::QuizExtension.new(quiz_submission, {})
 
       expect_event("quiz_extension_created", {
-                     quiz_id: @quiz.id.to_s,
-                     user_id: @student.id.to_s,
+                     quiz_id: quiz_submission.global_quiz_id.to_s,
+                     user_id: quiz_submission.global_user_id.to_s,
                      extra_attempts: 2
                    })
 
