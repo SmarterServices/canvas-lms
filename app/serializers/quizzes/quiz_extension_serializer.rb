@@ -28,5 +28,9 @@ module Quizzes
                :extra_time,
                :manually_unlocked,
                :end_at
+
+    def stringify_ids?
+      false
+    end
   end
 end
