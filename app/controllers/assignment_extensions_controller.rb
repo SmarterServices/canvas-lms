@@ -110,6 +110,13 @@ class AssignmentExtensionsController < ApplicationController
         { user_id: submission.user.id, extra_attempts: submission.extra_attempts }
       end
 
+      if @assignment.quiz_lti?
+        accommodations = submissions.map do |sub|
+          { user_id: sub.user.global_id, extra_attempts: sub.extra_attempts }
+        end
+        Canvas::LiveEvents.new_quiz_accommodation_created(@context, @assignment, accommodations)
+      end
+
       render json: { assignment_extensions: }
     else
       invalid_submissions = submissions.reject(&:valid?)
