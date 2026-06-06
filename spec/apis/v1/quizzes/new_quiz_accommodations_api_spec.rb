@@ -228,6 +228,7 @@ describe Quizzes::NewQuizAccommodationsController, type: :request do
 
     it "returns 404 when no accommodation exists for user" do
       other_student = student_in_course(course: @course, active_all: true).user
+      @user = @teacher
       stub_request(:get, "#{nq_api_host}/api/assignments/#{@assignment.id}/participants")
         .to_return(
           status: 200,
