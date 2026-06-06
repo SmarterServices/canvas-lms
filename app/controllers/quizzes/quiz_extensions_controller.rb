@@ -196,13 +196,16 @@ class Quizzes::QuizExtensionsController < ApplicationController
   private
 
   def serialize_jsonapi(quiz_extensions)
-    serialized_set = Canvas::APIArraySerializer.new(quiz_extensions, {
-                                                      each_serializer: Quizzes::QuizExtensionSerializer,
-                                                      controller: self,
-                                                      scope: @current_user,
-                                                      root: false,
-                                                      include_root: false
-                                                    }).as_json
+    serialized_set = quiz_extensions.map do |ext|
+      {
+        user_id: ext.user_id,
+        quiz_id: ext.quiz_id,
+        extra_attempts: ext.extra_attempts,
+        extra_time: ext.extra_time,
+        manually_unlocked: ext.manually_unlocked,
+        end_at: ext.end_at
+      }
+    end
 
     { quiz_extensions: serialized_set }
   end
