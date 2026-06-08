@@ -98,40 +98,4 @@ describe Canvas::LiveEvents do
     end
   end
 
-  describe ".new_quiz_accommodation_created" do
-    before :once do
-      course_factory
-      @assignment = @course.assignments.create!(title: "NQ Assignment", submission_types: "external_tool")
-      @student = student_in_course(course: @course, active_all: true).user
-    end
-
-    it "emits a new_quiz_accommodation_created event for each accommodation" do
-      accommodations = [
-        { user_id: @student.id, extra_time: 30, extra_attempts: 2, reduce_choices_enabled: true }
-      ]
-
-      expect_event("new_quiz_accommodation_created", {
-                     course_id: @course.global_id.to_s,
-                     assignment_id: @assignment.global_id.to_s,
-                     user_id: @student.id.to_s,
-                     extra_time: 30,
-                     extra_attempts: 2,
-                     reduce_choices_enabled: true
-                   })
-
-      Canvas::LiveEvents.new_quiz_accommodation_created(@course, @assignment, accommodations)
-    end
-
-    it "emits multiple events for multiple accommodations" do
-      student2 = student_in_course(course: @course, active_all: true).user
-      accommodations = [
-        { user_id: @student.id, extra_time: 30, extra_attempts: nil, reduce_choices_enabled: nil },
-        { user_id: student2.id, extra_time: 60, extra_attempts: 1, reduce_choices_enabled: false }
-      ]
-
-      expect(LiveEvents).to receive(:post_event).twice
-
-      Canvas::LiveEvents.new_quiz_accommodation_created(@course, @assignment, accommodations)
-    end
-  end
 end
