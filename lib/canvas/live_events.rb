@@ -618,19 +618,6 @@ module Canvas::LiveEvents
                            })
   end
 
-  def self.new_quiz_accommodation_created(course, assignment, accommodations)
-    accommodations.each do |accommodation|
-      post_event_stringified("new_quiz_accommodation_created", {
-                               course_id: course.global_id,
-                               assignment_id: assignment.global_id,
-                               user_id: accommodation[:user_id],
-                               extra_time: accommodation[:extra_time],
-                               extra_attempts: accommodation[:extra_attempts],
-                               reduce_choices_enabled: accommodation[:reduce_choices_enabled]
-                             })
-    end
-  end
-
   def self.wiki_page_created(page)
     post_event_stringified("wiki_page_created", {
                              wiki_page_id: page.global_id,
