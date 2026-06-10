@@ -199,7 +199,7 @@ class LiveEventSubscriptionsController < ApplicationController
     end
 
     uri.to_s
-  rescue URI::InvalidURIError
+  rescue URI::InvalidURIError, ArgumentError
     mask_string(url)
   end
 

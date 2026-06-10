@@ -361,6 +361,12 @@ describe LiveEventSubscriptionsController, type: :request do
       expect(result).to include("ok=yes")
     end
 
+    it "handles malformed percent-encoding in query params" do
+      url = "https://example.com/hook?token=abc%ZZdef"
+      result = controller.send(:mask_url, url)
+      expect(result).to eq("ht******ef")
+    end
+
     it "is applied to URL values in hash fields automatically" do
       input = {
         "TransportMetadata" => {
