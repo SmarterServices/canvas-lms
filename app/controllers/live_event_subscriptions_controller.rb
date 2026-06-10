@@ -143,7 +143,7 @@ class LiveEventSubscriptionsController < ApplicationController
   end
 
   def handle_service_error(error)
-    Rails.logger.error("LiveEventSubscriptions service error: #{error.class} - #{error.message}")
+    Canvas::Errors.capture_exception(:live_event_subscriptions, error, :warn)
     render json: { error: "Unable to communicate with Live Events Subscription service" },
            status: :bad_gateway
   end
