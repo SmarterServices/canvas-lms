@@ -49,6 +49,7 @@ describe LiveEventSubscriptionsController, type: :request do
   end
 
   before do
+    root_account.enable_feature!(:live_event_subscriptions_api)
     allow(DynamicSettings).to receive(:find).and_call_original
     allow(DynamicSettings).to receive(:find)
       .with("live-events-subscription-service", default_ttl: 5.minutes)
@@ -57,6 +58,34 @@ describe LiveEventSubscriptionsController, type: :request do
       encryption_secret: "setecastronomy92" * 2,
       signing_secret: "donttell" * 10
     )
+  end
+
+  context "when the feature flag is disabled" do
+    before do
+      root_account.disable_feature!(:live_event_subscriptions_api)
+      user_session(admin)
+    end
+
+    it "returns 404 for index" do
+      raw_api_call(:get,
+                   "/api/v1/accounts/#{root_account.id}/live_event_subscriptions",
+                   { controller: "live_event_subscriptions",
+                     action: "index",
+                     format: "json",
+                     account_id: root_account.id.to_s })
+      assert_status(404)
+    end
+
+    it "returns 404 for show" do
+      raw_api_call(:get,
+                   "/api/v1/accounts/#{root_account.id}/live_event_subscriptions/some-id",
+                   { controller: "live_event_subscriptions",
+                     action: "show",
+                     format: "json",
+                     account_id: root_account.id.to_s,
+                     id: "some-id" })
+      assert_status(404)
+    end
   end
 
   describe "GET /api/v1/accounts/:account_id/live_event_subscriptions (index)" do

@@ -76,6 +76,7 @@
 #    }
 class LiveEventSubscriptionsController < ApplicationController
   before_action :require_account_context
+  before_action { require_feature_enabled :live_event_subscriptions_api }
   before_action :require_root_account
   before_action :require_manage_data_services
   before_action :verify_service_configured
@@ -135,10 +136,10 @@ class LiveEventSubscriptionsController < ApplicationController
   end
 
   def verify_service_configured
-    unless Services::LiveEventsSubscriptionService.available?
-      render json: { error: "Live Events Subscription service not configured" },
-             status: :service_unavailable
-    end
+    return if Services::LiveEventsSubscriptionService.available?
+
+    render json: { error: "Live Events Subscription service not configured" },
+           status: :service_unavailable
   end
 
   def handle_service_error(error)
