@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2025 - present Instructure, Inc.
+# Copyright (C) 2026 - present Instructure, Inc.
 #
 # This file is part of Canvas.
 #
@@ -80,7 +80,7 @@ class LiveEventSubscriptionsController < ApplicationController
   before_action :require_manage_data_services
   before_action :verify_service_configured
 
-  SENSITIVE_KEY_PATTERN = /key|secret|credential|token|password/i
+  SENSITIVE_KEY_PATTERN = /(?:_|\b)(?:key|secret|credential|token|password)(?:_|\b)/i
 
   # @API List Live Event Subscriptions
   #
@@ -94,6 +94,8 @@ class LiveEventSubscriptionsController < ApplicationController
   def index
     response = Services::LiveEventsSubscriptionService.index(jwt_body)
     render_masked_response(response)
+  rescue Timeout::Error, StandardError => e
+    handle_service_error(e)
   end
 
   # @API Show a Live Event Subscription
@@ -106,6 +108,8 @@ class LiveEventSubscriptionsController < ApplicationController
   def show
     response = Services::LiveEventsSubscriptionService.show(jwt_body, params[:id])
     render_masked_response(response)
+  rescue Timeout::Error, StandardError => e
+    handle_service_error(e)
   end
 
   private
@@ -135,6 +139,12 @@ class LiveEventSubscriptionsController < ApplicationController
       render json: { error: "Live Events Subscription service not configured" },
              status: :service_unavailable
     end
+  end
+
+  def handle_service_error(error)
+    Rails.logger.error("LiveEventSubscriptions service error: #{error.class} - #{error.message}")
+    render json: { error: "Unable to communicate with Live Events Subscription service" },
+           status: :bad_gateway
   end
 
   def render_masked_response(service_response)

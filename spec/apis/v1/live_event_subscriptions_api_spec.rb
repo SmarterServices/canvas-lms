@@ -1,7 +1,7 @@
 # frozen_string_literal: true
 
 #
-# Copyright (C) 2025 - present Instructure, Inc.
+# Copyright (C) 2026 - present Instructure, Inc.
 #
 # This file is part of Canvas.
 #
@@ -149,6 +149,40 @@ describe LiveEventSubscriptionsController, type: :request do
                        format: "json",
                        account_id: root_account.id.to_s })
         assert_status(503)
+      end
+    end
+
+    context "when the subscription service times out" do
+      before do
+        user_session(admin)
+        allow(HTTParty).to receive(:send).and_raise(Timeout::Error.new("execution expired"))
+      end
+
+      it "returns 502 bad gateway" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{root_account.id}/live_event_subscriptions",
+                     { controller: "live_event_subscriptions",
+                       action: "index",
+                       format: "json",
+                       account_id: root_account.id.to_s })
+        assert_status(502)
+      end
+    end
+
+    context "when the subscription service raises a network error" do
+      before do
+        user_session(admin)
+        allow(HTTParty).to receive(:send).and_raise(Errno::ECONNREFUSED.new("Connection refused"))
+      end
+
+      it "returns 502 bad gateway" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{root_account.id}/live_event_subscriptions",
+                     { controller: "live_event_subscriptions",
+                       action: "index",
+                       format: "json",
+                       account_id: root_account.id.to_s })
+        assert_status(502)
       end
     end
   end
