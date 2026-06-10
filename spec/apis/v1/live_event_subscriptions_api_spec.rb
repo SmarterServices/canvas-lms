@@ -287,6 +287,42 @@ describe LiveEventSubscriptionsController, type: :request do
         assert_status(401)
       end
     end
+
+    context "with a sub-account" do
+      before do
+        sub_account_admin = account_admin_user(account: sub_account, active_all: true)
+        user_session(sub_account_admin)
+      end
+
+      it "rejects with 400" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{sub_account.id}/live_event_subscriptions/#{subscription_id}",
+                     { controller: "live_event_subscriptions",
+                       action: "show",
+                       format: "json",
+                       account_id: sub_account.id.to_s,
+                       id: subscription_id })
+        assert_status(400)
+      end
+    end
+
+    context "when the subscription service times out" do
+      before do
+        user_session(admin)
+        allow(HTTParty).to receive(:send).and_raise(Timeout::Error.new("execution expired"))
+      end
+
+      it "returns 502 bad gateway" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{root_account.id}/live_event_subscriptions/#{subscription_id}",
+                     { controller: "live_event_subscriptions",
+                       action: "show",
+                       format: "json",
+                       account_id: root_account.id.to_s,
+                       id: subscription_id })
+        assert_status(502)
+      end
+    end
   end
 
   describe "credential masking" do
@@ -321,6 +357,19 @@ describe LiveEventSubscriptionsController, type: :request do
     it "handles nil values gracefully" do
       controller = LiveEventSubscriptionsController.new
       expect(controller.send(:mask_string, nil)).to be_nil
+    end
+
+    it "passes through non-string sensitive values unchanged" do
+      controller = LiveEventSubscriptionsController.new
+      input = { "token_enabled" => true, "key_count" => 42 }
+      result = controller.send(:mask_sensitive_fields, input)
+      expect(result["token_enabled"]).to be(true)
+      expect(result["key_count"]).to eq(42)
+    end
+
+    it "masks empty string as-is" do
+      controller = LiveEventSubscriptionsController.new
+      expect(controller.send(:mask_string, "")).to eq("")
     end
   end
 
