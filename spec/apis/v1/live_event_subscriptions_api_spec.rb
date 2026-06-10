@@ -220,14 +220,14 @@ describe LiveEventSubscriptionsController, type: :request do
       user_session(admin)
     end
 
-    it "masks keys with only 4 characters by leaving them as-is" do
+    it "masks strings with only 4 characters by leaving them as-is" do
       controller = LiveEventSubscriptionsController.new
-      expect(controller.send(:mask_value, "ABCD")).to eq("ABCD")
+      expect(controller.send(:mask_string, "ABCD")).to eq("ABCD")
     end
 
-    it "masks keys with 5+ characters" do
+    it "masks strings with 5+ characters" do
       controller = LiveEventSubscriptionsController.new
-      expect(controller.send(:mask_value, "ABCDE")).to eq("AB******DE")
+      expect(controller.send(:mask_string, "ABCDE")).to eq("AB******DE")
     end
 
     it "masks nested sensitive values in hashes" do
@@ -246,7 +246,56 @@ describe LiveEventSubscriptionsController, type: :request do
 
     it "handles nil values gracefully" do
       controller = LiveEventSubscriptionsController.new
-      expect(controller.send(:mask_value, nil)).to be_nil
+      expect(controller.send(:mask_string, nil)).to be_nil
+    end
+  end
+
+  describe "URL masking" do
+    let(:controller) { LiveEventSubscriptionsController.new }
+
+    it "preserves base URL without query params or auth" do
+      url = "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue"
+      expect(controller.send(:mask_url, url)).to eq(url)
+    end
+
+    it "masks basic auth credentials in URL" do
+      url = "https://myuser:mysecretpass@example.com/webhook"
+      result = controller.send(:mask_url, url)
+      expect(result).to eq("https://my******er:my******ss@example.com/webhook")
+    end
+
+    it "masks query parameter values" do
+      url = "https://example.com/webhook?token=adfasfdasfs&api_key=secret123"
+      result = controller.send(:mask_url, url)
+      expect(result).to include("token=ad******fs")
+      expect(result).to include("api_key=se******23")
+      expect(result).to include("https://example.com/webhook?")
+    end
+
+    it "masks both basic auth and query params" do
+      url = "https://admin:password@example.com/events?token=abc12345"
+      result = controller.send(:mask_url, url)
+      expect(result).to include("ad******in")
+      expect(result).to include("pa******rd")
+      expect(result).to include("token=ab******45")
+    end
+
+    it "leaves short query param values as-is" do
+      url = "https://example.com/webhook?v=1&ok=yes"
+      result = controller.send(:mask_url, url)
+      expect(result).to include("v=1")
+      expect(result).to include("ok=yes")
+    end
+
+    it "is applied to URL values in hash fields automatically" do
+      input = {
+        "TransportMetadata" => {
+          "Url" => "https://example.com/hook?token=mysecrettoken123"
+        }
+      }
+      result = controller.send(:mask_sensitive_fields, input)
+      expect(result["TransportMetadata"]["Url"]).to include("https://example.com/hook?")
+      expect(result["TransportMetadata"]["Url"]).to include("token=my******23")
     end
   end
 end

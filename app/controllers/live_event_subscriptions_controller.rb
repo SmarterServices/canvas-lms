@@ -153,6 +153,8 @@ class LiveEventSubscriptionsController < ApplicationController
       obj.each_with_object({}) do |(key, value), result|
         result[key] = if sensitive_key?(key)
                         mask_value(value)
+                      elsif value.is_a?(String) && url_like?(value)
+                        mask_url(value)
                       else
                         mask_sensitive_fields(value)
                       end
@@ -168,12 +170,34 @@ class LiveEventSubscriptionsController < ApplicationController
     SENSITIVE_KEY_PATTERN.match?(key.to_s)
   end
 
+  def url_like?(value)
+    value.match?(%r{\Ahttps?://}i)
+  end
+
+  def mask_url(url)
+    uri = URI.parse(url)
+
+    if uri.userinfo
+      uri.user = mask_string(uri.user) if uri.user
+      uri.password = mask_string(uri.password) if uri.password
+    end
+
+    if uri.query
+      masked_params = URI.decode_www_form(uri.query).map do |key, value|
+        [key, mask_string(value)]
+      end
+      uri.query = URI.encode_www_form(masked_params)
+    end
+
+    uri.to_s
+  rescue URI::InvalidURIError
+    mask_string(url)
+  end
+
   def mask_value(value)
     case value
     when String
-      return value if value.length <= 4
-
-      "#{value[0..1]}******#{value[-2..]}"
+      mask_string(value)
     when Hash
       value.transform_values { |v| mask_value(v) }
     when Array
@@ -181,5 +205,11 @@ class LiveEventSubscriptionsController < ApplicationController
     else
       value
     end
+  end
+
+  def mask_string(str)
+    return str if str.nil? || str.length <= 4
+
+    "#{str[0..1]}******#{str[-2..]}"
   end
 end
