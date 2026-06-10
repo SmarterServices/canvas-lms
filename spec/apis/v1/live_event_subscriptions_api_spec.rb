@@ -185,6 +185,46 @@ describe LiveEventSubscriptionsController, type: :request do
         assert_status(502)
       end
     end
+
+    context "when the subscription service returns non-JSON" do
+      before do
+        user_session(admin)
+        bad_response = instance_double(HTTParty::Response, body: "<html>Internal Error</html>", code: 500)
+        allow(HTTParty).to receive(:send).and_return(bad_response)
+      end
+
+      it "returns 502 with structured error" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{root_account.id}/live_event_subscriptions",
+                     { controller: "live_event_subscriptions",
+                       action: "index",
+                       format: "json",
+                       account_id: root_account.id.to_s })
+        assert_status(502)
+        json = JSON.parse(response.body)
+        expect(json["error"]).to include("Unexpected response")
+      end
+    end
+
+    context "when the subscription service returns a non-200 status" do
+      before do
+        user_session(admin)
+        error_response = instance_double(HTTParty::Response,
+                                         body: { "error" => "not found" }.to_json,
+                                         code: 404)
+        allow(HTTParty).to receive(:send).and_return(error_response)
+      end
+
+      it "forwards the status code from the service" do
+        raw_api_call(:get,
+                     "/api/v1/accounts/#{root_account.id}/live_event_subscriptions",
+                     { controller: "live_event_subscriptions",
+                       action: "index",
+                       format: "json",
+                       account_id: root_account.id.to_s })
+        assert_status(404)
+      end
+    end
   end
 
   describe "GET /api/v1/accounts/:account_id/live_event_subscriptions/:id (show)" do

@@ -94,7 +94,7 @@ class LiveEventSubscriptionsController < ApplicationController
   def index
     response = Services::LiveEventsSubscriptionService.index(jwt_body)
     render_masked_response(response)
-  rescue Timeout::Error, StandardError => e
+  rescue StandardError => e
     handle_service_error(e)
   end
 
@@ -106,9 +106,9 @@ class LiveEventSubscriptionsController < ApplicationController
   #
   # @returns LiveEventSubscription
   def show
-    response = Services::LiveEventsSubscriptionService.show(jwt_body, params[:id])
+    response = Services::LiveEventsSubscriptionService.show(jwt_body, params.require(:id))
     render_masked_response(response)
-  rescue Timeout::Error, StandardError => e
+  rescue StandardError => e
     handle_service_error(e)
   end
 
@@ -125,7 +125,7 @@ class LiveEventSubscriptionsController < ApplicationController
     {
       sub: "#{@context.global_id}:#{@context.uuid}",
       DeveloperKey: "internal",
-      RootAccountId: @context.global_id.to_s,
+      RootAccountId: @context.global_id,
       RootAccountUUID: @context.uuid
     }
   end
@@ -148,13 +148,12 @@ class LiveEventSubscriptionsController < ApplicationController
   end
 
   def render_masked_response(service_response)
-    body = begin
-      JSON.parse(service_response.body)
-    rescue JSON::ParserError
-      service_response.body
-    end
+    body = JSON.parse(service_response.body)
     masked = mask_sensitive_fields(body)
     render json: masked, status: service_response.code
+  rescue JSON::ParserError
+    render json: { error: "Unexpected response from subscription service" },
+           status: :bad_gateway
   end
 
   def mask_sensitive_fields(obj)
