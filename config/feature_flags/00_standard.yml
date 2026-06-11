@@ -417,6 +417,7 @@ enable_kafka_events:
   description: Allow emitting events to Kafka
   applies_to: SiteAdmin
 live_event_subscriptions_api:
+  type: setting
   state: hidden
   display_name: Live Event Subscriptions API
   description: |-
