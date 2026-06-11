@@ -64,7 +64,7 @@
 #        },
 #        "TransportMetadata": {
 #          "description": "Transport configuration. Sensitive values are masked.",
-#          "example": { "Url": "https://sqs.us-east-1.amazonaws.com/12******12/my-queue" },
+#          "example": { "Url": "https://sqs.us-east-1.amazonaws.com/123456789012/my-queue" },
 #          "type": "object"
 #        },
 #        "State": {
