@@ -106,7 +106,7 @@ class Quizzes::QuizExtensionsController < ApplicationController
       Quizzes::QuizExtension.new(qs, {})
     end
 
-    render json: serialize_jsonapi(extensions)
+    render json: serialize_extensions(extensions)
   end
 
   # @API Set extensions for student quiz submissions
@@ -196,6 +196,18 @@ class Quizzes::QuizExtensionsController < ApplicationController
   private
 
   def serialize_jsonapi(quiz_extensions)
+    serialized_set = Canvas::APIArraySerializer.new(quiz_extensions, {
+                                                      each_serializer: Quizzes::QuizExtensionSerializer,
+                                                      controller: self,
+                                                      scope: @current_user,
+                                                      root: false,
+                                                      include_root: false
+                                                    }).as_json
+
+    { quiz_extensions: serialized_set }
+  end
+
+  def serialize_extensions(quiz_extensions)
     serialized_set = quiz_extensions.map do |ext|
       {
         user_id: ext.user_id,

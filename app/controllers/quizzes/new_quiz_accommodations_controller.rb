@@ -56,6 +56,7 @@
 #     }
 class Quizzes::NewQuizAccommodationsController < ApplicationController
   before_action :require_context
+  before_action :authorize_read
   before_action :require_assignment
   before_action :require_new_quizzes_service
 
@@ -80,8 +81,6 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
   #  }
   #
   def index
-    return render_unauthorized_action unless authorized_to_read?
-
     response = fetch_accommodations_from_service
     if response.nil?
       render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] },
@@ -121,8 +120,6 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
   #  }
   #
   def show
-    return render_unauthorized_action unless authorized_to_read?
-
     response = fetch_accommodations_from_service
     if response.nil?
       render json: { errors: [{ message: "Unable to communicate with New Quizzes service" }] },
@@ -175,8 +172,8 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
     render json: { errors: [{ message: "New Quizzes service error" }] }, status: :bad_gateway
   end
 
-  def authorized_to_read?
-    @context.grants_any_right?(@current_user, session, :manage_assignments, :manage_assignments_edit)
+  def authorize_read
+    render_unauthorized_action unless @context.grants_any_right?(@current_user, session, :manage_assignments, :manage_assignments_edit)
   end
 
   def extract_accommodations(participants)
@@ -190,7 +187,9 @@ class Quizzes::NewQuizAccommodationsController < ApplicationController
       extra_attempts = participant["extra_attempts"]
       reduce_choices_enabled = participant["reduce_choices_enabled"]
 
-      next unless extra_time.to_i > 0 || extra_attempts.to_i > 0 || reduce_choices_enabled == true
+      reduce_choices_enabled = Canvas::Plugin.value_to_boolean(reduce_choices_enabled)
+
+      next unless extra_time.to_i > 0 || extra_attempts.to_i > 0 || reduce_choices_enabled
 
       {
         user_id:,
