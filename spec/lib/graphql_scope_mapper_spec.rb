@@ -40,7 +40,7 @@ describe GraphQLScopeMapper do
 
     it "only returns scopes belonging to the mapped resource" do
       scopes = described_class.scopes_for_type("User", verb: "GET")
-      users_scopes = TokenScopes.named_scopes.select { |s| s[:resource] == :users && s[:verb] == "GET" }.map { |s| s[:scope] }
+      users_scopes = TokenScopes.named_scopes.select { |s| s[:resource] == :users && s[:verb] == "GET" }.pluck(:scope)
       expect(scopes).to match_array(users_scopes)
     end
 
@@ -48,7 +48,7 @@ describe GraphQLScopeMapper do
       get_scopes = described_class.scopes_for_type("User", verb: "GET")
       post_scopes = described_class.scopes_for_type("User", verb: "POST")
       expect(get_scopes).not_to match_array(post_scopes)
-      matching = TokenScopes.named_scopes.select { |s| s[:resource] == :users && s[:verb] == "POST" }.map { |s| s[:scope] }
+      matching = TokenScopes.named_scopes.select { |s| s[:resource] == :users && s[:verb] == "POST" }.pluck(:scope)
       expect(post_scopes).to match_array(matching)
     end
 
