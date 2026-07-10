@@ -96,6 +96,61 @@ curl https://<canvas>/api/graphql \
 }
 ```
 
+## Scope-based Type Authorization
+
+When a developer key has **`require_scopes`** enabled, GraphQL access is gated by
+the same REST API scopes granted to the token. Each GraphQL object type is
+mapped to the REST scope(s) that read the equivalent resource, and enforcement
+is **deny-by-default / fail-closed**: a type is accessible only when the token
+holds a matching read scope, and any type that maps to no scope is forbidden.
+
+This is implemented in `GraphQLScopeMapper` (`lib/graphql_scope_mapper.rb`) and
+enforced from `AuthenticationMethods.graphql_type_authorized?`.
+
+### How a type maps to scopes
+
+Mappings are **derived dynamically** from `TokenScopes.named_scopes` (the same
+source the tokens themselves are built from) — there is no hand-maintained
+table. For a given GraphQL type:
+
+1. Take its `graphql_name` (e.g. `Quiz`) and compute `underscore.pluralize`
+   (`"quizzes"`). A small override table handles the few names that don't
+   pluralize to their REST path (e.g. `Discussion` → `discussion_topics`).
+2. Select every scope whose REST URL **path's terminal collection segment** (the
+   last non-parameter segment) equals that value. For `Quiz` that includes
+   `url:GET|/api/v1/courses/:course_id/quizzes`.
+
+Matching on the URL path (rather than the controller/resource name) means the
+mapping is environment-independent and also covers types served by namespaced
+controllers such as `Quiz`, `Module`, and `Page`.
+
+### Rules
+
+- **Queries** for a mapped type resolve only when the token holds a `GET` scope
+  for that type's collection.
+- **Deny-by-default:** a type that maps to no scope is forbidden. There is no
+  allowlist exception for unmapped types.
+- **The root `Query` type** is always traversable (otherwise no field could
+  resolve). **Mutations are blocked** under `require_scopes`: the root
+  `Mutation` type is intentionally not allowed, so mutation resolvers never run.
+- This scope gate is an **additional** layer; existing per-field
+  `grants_right?` / `grants_any_right?` permission checks still apply on top.
+- **Note on shared path segments:** a few REST collections share a path segment
+  across contexts (e.g. `groups` is used by user groups, quiz question groups,
+  and appointment groups). Holding any such read scope satisfies the gate for
+  the same-named type; because per-field permission checks still apply, this
+  does not itself expose data.
+
+### Which types map to which scopes
+
+Because the mapping is dynamic it can change as API routes change. A snapshot of
+the current mapping (GraphQL type → required `GET` scopes) is generated at
+[`doc/api/graphql_type_scopes.md`](graphql_type_scopes.html). Regenerate it with:
+
+```bash
+bundle exec rake graphql:scopes
+```
+
 ## GraphQL in Canvas
 
 ### `id` vs `_id` and the `node` field
