@@ -133,12 +133,35 @@ module AuthenticationMethods
   end
 
   def self.graphql_type_authorized?(access_token, type)
-    if access_token&.developer_key&.require_scopes
-      # allowing the root query type for now, but any other type is forbidden
-      type == "Query"
-    else
-      true
-    end
+    # When the developer key does not require scopes there is nothing to
+    # enforce -- every type is authorized.
+    return true unless access_token&.developer_key&.require_scopes
+
+    # Under require_scopes we gate each GraphQL object type against the REST API
+    # scopes granted to the token, mapping the type to the REST resource(s) that
+    # expose the equivalent data (see GraphQLScopeMapper). Enforcement is
+    # deny-by-default / fail-closed:
+    #
+    #   * the root Query and Mutation types are always allowed (otherwise no
+    #     field could ever resolve);
+    #   * a type mapped to a resource is allowed only when the token holds a
+    #     read (GET) scope for that resource;
+    #   * every other type -- unmapped, or mapped but missing the scope -- is
+    #     forbidden. There is deliberately no allowlist exception for unmapped
+    #     types.
+    #
+    # Mutations are not yet scope-mapped by write verb: the root Mutation type
+    # is allowed so the schema can be traversed, but every object type a
+    # mutation returns is only mapped to read (GET) scopes, so a scoped token
+    # still cannot read a mutation's result and receives an "insufficient
+    # scopes" error -- matching today's behavior at the response level. Proper
+    # write-verb (POST/PUT/DELETE) enforcement is left for a future iteration.
+    return true if %w[Query Mutation].include?(type)
+
+    required_scopes = GraphQLScopeMapper.scopes_for_type(type, verb: "GET")
+    return false if required_scopes.empty?
+
+    (Array(access_token.scopes) & required_scopes).any?
   end
 
   def load_pseudonym_from_access_token

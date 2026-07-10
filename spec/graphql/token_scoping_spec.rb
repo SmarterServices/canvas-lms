@@ -25,9 +25,23 @@ describe "GraphQL Token Scoping" do
     teacher_in_course(active_all: true)
   end
 
-  let(:scoped_developer_key) { DeveloperKey.create!(require_scopes: true, name: "Test Scoped Developer Key") }
+  let(:users_get_scopes) { GraphQLScopeMapper.scopes_for_type("User", verb: "GET") }
+  let(:courses_get_scopes) { GraphQLScopeMapper.scopes_for_type("Course", verb: "GET") }
+  let(:users_scope) { users_get_scopes.first }
+  let(:courses_scope) { courses_get_scopes.first }
+
+  let(:scoped_developer_key) do
+    DeveloperKey.create!(
+      require_scopes: true,
+      name: "Test Scoped Developer Key",
+      scopes: users_get_scopes | courses_get_scopes
+    )
+  end
   let(:unscoped_developer_key) { DeveloperKey.create!(name: "Test Unscoped Developer Key") }
   let(:course_type) { GraphQLTypeTester.new(@course, current_user: @teacher) }
+  let(:user_type) { GraphQLTypeTester.new(@teacher, current_user: @teacher) }
+  let(:group) { @course.groups.create!(name: "Test Group") }
+  let(:group_type) { GraphQLTypeTester.new(group, current_user: @teacher) }
 
   it "does not affect requests with an unscoped developer key" do
     token = AccessToken.create!(developer_key: unscoped_developer_key)
@@ -36,10 +50,31 @@ describe "GraphQL Token Scoping" do
     ).to eq @course.id.to_s
   end
 
-  it "does not allow queries with a scoped developer key" do
+  it "does not allow queries with a scoped developer key that lacks the required scope" do
     token = AccessToken.create!(developer_key: scoped_developer_key)
     expect do
       course_type.resolve("_id", access_token: token)
+    end.to raise_error(/insufficient scopes/)
+  end
+
+  it "allows a mapped type when the token holds the mapped read scope" do
+    token = AccessToken.create!(developer_key: scoped_developer_key, scopes: [users_scope])
+    expect(
+      user_type.resolve("_id", access_token: token)
+    ).to eq @teacher.id.to_s
+  end
+
+  it "does not allow a mapped type when the token holds only a different resource's scope" do
+    token = AccessToken.create!(developer_key: scoped_developer_key, scopes: [courses_scope])
+    expect do
+      user_type.resolve("_id", access_token: token)
+    end.to raise_error(/insufficient scopes/)
+  end
+
+  it "does not allow an unmapped type even with a valid scope (deny-by-default)" do
+    token = AccessToken.create!(developer_key: scoped_developer_key, scopes: [users_scope])
+    expect do
+      group_type.resolve("_id", access_token: token)
     end.to raise_error(/insufficient scopes/)
   end
 
