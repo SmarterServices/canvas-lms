@@ -19,72 +19,94 @@
 #
 
 # Maps GraphQL object type names (their +graphql_name+, e.g. "User", "Course")
-# to the REST API "resource" that grants access to the equivalent data.
+# to the REST API scopes that grant access to the equivalent data.
 #
-# The resource symbols correspond to the +:resource+ values produced by
-# +TokenScopes.named_scopes+, which come from
-# +ApiScopeMapper.lookup_resource(controller, action)+ (see
-# +lib/base/api_scope_mapper_fallback.rb+). Because Canvas names its REST
-# resources after the pluralized model ("users", "courses", "assignment_groups",
-# ...) and its GraphQL types after the singular ("User", "Course",
-# "AssignmentGroup", ...), most mappings can be derived automatically:
-# underscore + pluralize the type name and keep it only when the result is an
-# actual REST resource. +TokenScopes.named_scopes+ is the source of truth for
-# which resources exist, so the mapping stays in sync as API routes change, and
-# the required scope strings are always drawn from the same source the tokens
-# are built from.
+# Rather than hand-maintaining a table, mappings are derived from
+# +TokenScopes.named_scopes+ (the source of truth the tokens themselves are
+# built from) by looking at each scope's URL *path*. Canvas names its GraphQL
+# types after the singular resource ("User", "Course", "AssignmentGroup", ...)
+# and exposes that resource under a REST collection path whose final segment is
+# the pluralized name ("/users", "/courses", "/assignment_groups", ...). So a
+# type maps to exactly the scopes whose path's terminal collection segment (the
+# last non-parameter segment) equals +type_name.underscore.pluralize+.
 #
-# +OVERRIDES+ covers the types whose +graphql_name+ does not pluralize to their
-# REST resource. Keep it small and verified -- an entry pointing at a resource
-# that does not exist simply yields no scopes (and therefore a denial).
+# Matching on the path rather than the controller/resource name has two
+# benefits:
 #
-# Enforcement remains deny-by-default / fail-closed: any type that does not
-# resolve to a known resource here is treated as forbidden by the caller
+#   * it is environment-independent -- routes are identical whether the
+#     generated +ApiScopeMapper+ or the fallback is in use, whereas the
+#     +:resource+ symbol is a controller name that can be namespaced
+#     (e.g. +:"quizzes/quizzes_api"+) and differ between the two; and
+#   * it covers types served by namespaced controllers (Quiz, Module, Page, ...)
+#     that a naive controller-name match would miss.
+#
+# Because a scope is only matched when it *reads that exact collection*, the
+# mapping does not leak across types (holding a +courses+ scope never grants the
+# +User+ type, etc.).
+#
+# +SEGMENT_OVERRIDES+ covers the few types whose +graphql_name+ does not
+# pluralize to their REST path segment. Keep it small and verified -- an entry
+# pointing at a segment that no route uses simply yields no scopes (a denial).
+#
+# Enforcement remains deny-by-default / fail-closed: any type that resolves to
+# no scopes here is treated as forbidden by the caller
 # (+AuthenticationMethods.graphql_type_authorized?+).
 module GraphQLScopeMapper
-  # GraphQL type name => REST resource symbol(s). Only needed where
-  # +underscore.pluralize+ does not already match the REST resource.
-  OVERRIDES = {
-    "Discussion" => :discussion_topics,
+  # GraphQL type name => REST path collection segment. Only needed where
+  # +underscore.pluralize+ does not already match the path segment that reads
+  # the resource.
+  SEGMENT_OVERRIDES = {
+    "Discussion" => "discussion_topics",
   }.freeze
 
   class << self
-    # Returns the REST resource symbol(s) mapped to the given GraphQL type name,
-    # or an empty array when the type does not map to a known REST resource.
-    def resources_for_type(type_name)
-      return Array(OVERRIDES[type_name]) if OVERRIDES.key?(type_name)
-
-      candidate = derived_resource(type_name)
-      return [] unless candidate && known_resources.include?(candidate)
-
-      [candidate]
-    end
-
     # Returns the concrete REST scope strings (e.g. "url:GET|/api/v1/users") that
-    # grant access to the resource(s) mapped to +type_name+ for the given HTTP
-    # +verb+. Returns an empty array when the type is not mapped or no matching
-    # scope exists.
+    # grant read access to +type_name+ for the given HTTP +verb+. Returns an
+    # empty array when the type maps to no known collection or no matching scope
+    # exists.
     def scopes_for_type(type_name, verb: "GET")
-      resources = resources_for_type(type_name)
-      return [] if resources.empty?
+      segment = segment_for_type(type_name)
+      return [] if segment.nil?
 
       TokenScopes.named_scopes.filter_map do |scope|
-        scope[:scope] if resources.include?(scope[:resource]) && scope[:verb] == verb
+        next unless scope[:verb] == verb
+
+        scope[:scope] if collection_segment(scope[:path]) == segment
       end
+    end
+
+    # Returns the REST resource symbol(s) backing +type_name+ for the given
+    # +verb+. Purely informational (introspection/specs); enforcement uses
+    # +scopes_for_type+. Empty when the type does not map.
+    def resources_for_type(type_name, verb: "GET")
+      segment = segment_for_type(type_name)
+      return [] if segment.nil?
+
+      TokenScopes.named_scopes.filter_map do |scope|
+        next unless scope[:verb] == verb
+
+        scope[:resource] if collection_segment(scope[:path]) == segment
+      end.uniq
+    end
+
+    # The REST collection path segment that reads +type_name+, or nil when the
+    # type name is blank.
+    def segment_for_type(type_name)
+      return nil if type_name.blank?
+
+      SEGMENT_OVERRIDES[type_name] || type_name.underscore.pluralize
     end
 
     private
 
-    # The set of REST resource symbols that actually exist, taken from the API
-    # routes captured by TokenScopes. Memoized per process.
-    def known_resources
-      @known_resources ||= TokenScopes.named_scopes.to_set { |scope| scope[:resource] }
-    end
+    # The final non-parameter segment of a REST path -- the collection being
+    # acted on. e.g. "/api/v1/courses/:course_id/quizzes" => "quizzes",
+    # "/api/v1/users/:id" => "users". Nil for scopes without a URL path
+    # (e.g. the OAuth userinfo scope).
+    def collection_segment(path)
+      return nil if path.blank?
 
-    def derived_resource(type_name)
-      return nil if type_name.blank?
-
-      type_name.underscore.pluralize.to_sym
+      path.split("/").reject { |segment| segment.blank? || segment.start_with?(":") }.last
     end
   end
 end
