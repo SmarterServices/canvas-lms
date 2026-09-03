@@ -35,9 +35,38 @@ Every event is written to Kinesis as a single JSON record:
 }
 ```
 
-> Downstream (Canvas Data Services / live-events-publish webhooks and SQS) the
-> `attributes` object is delivered under the key `metadata`. The field set is
-> identical.
+> **Delivered shape (SQS and HTTPS).** Canvas itself only ever emits the
+> `{attributes, body}` record above; it has no knowledge of the transport.
+> Fan-out to subscribers is done by Instructure's external publisher
+> (`live-events-publish`, managed via Canvas Data Services /
+> `Lti::DataServicesController`). The publisher re-wraps each event as
+>
+> ```json
+> {
+>   "subscription": { ...the matching subscription record... },
+>   "metadata":     { ...identical to attributes... },
+>   "body":         { ...unchanged... }
+> }
+> ```
+>
+> This is the same for `TransportType: "sqs"` (the JSON is the SQS message
+> body) and `TransportType: "https"` (the JSON is the POST body), as long as
+> `Format` is `"live-event"`. Subscriptions with `Format: "caliper"` are
+> delivered in the IMS Caliper envelope instead and do not follow this document.
+>
+> `subscription` is populated by the publisher from the subscription record.
+> The fields Canvas stores on a subscription (see
+> `Lti::DataServicesController` / `Lti::PlagiarismSubscriptionsHelper`) are
+> `Id`, `ContextId`, `ContextType` (`root_account`, `account`, `course`,
+> `assignment`), `EventTypes` (or `SystemEventTypes` / `UserEventTypes`),
+> `Format`, `TransportType`, `TransportMetadata` (`{ "Url": ... }`),
+> `OwnerId`, `OwnerType`, `AssociatedIntegrationId`. The exact key casing of the
+> `subscription` object as delivered is determined by the publisher, not by
+> this repo — verify against a real delivered message.
+>
+> Note that `SystemEventTypes` vs `UserEventTypes` on the subscription is how
+> the publisher decides whether to forward the system-generated (job context)
+> or user-generated (request context) variant of an event described below.
 
 Serialisation rules that apply to both `attributes` and `body`:
 
